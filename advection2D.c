@@ -27,8 +27,6 @@ Notes: The time step is calculated using the CFL condition
 
 int main(){
 
-    printf("2D advection example program\n");
-
   /* Grid properties */
   const int NX=1000;    // Number of x points
   const int NY=1000;    // Number of y points
@@ -58,15 +56,12 @@ int main(){
   /* Velocity */
   const float velx=0.01; // Velocity in x direction
   const float vely=0.01; // Velocity in y direction
-
-  printf("NX = %d\n", NX);
   
   /* Arrays to store variables. These have NX+2 elements
      to allow boundary values to be stored at both ends */
   float x[NX+2];          // x-axis values
   float y[NX+2];          // y-axis values
   float u[NX+2][NY+2];    // Array of u values
-  printf("HERE\n");
   float dudt[NX+2][NY+2]; // Rate of change of u
 
   float x2;   // x squared (used to calculate iniital conditions)
@@ -79,8 +74,6 @@ int main(){
   /* Calculate time step using the CFL condition */
   /* The fabs function gives the absolute value in case the velocity is -ve */
   float dt = CFL / ( (fabs(velx) / dx) + (fabs(vely) / dy) );
-
-  printf("HERE\n");
   
   /*** Report information about the calculation ***/
   printf("Grid spacing dx     = %g\n", dx);
