@@ -2,8 +2,8 @@
 
 # Compiler settings
 CC = gcc
-CFLAGS = -std=c99 -Wall
-LDFLAGS = -lm
+CFLAGS = -std=c99 -Wall -fopenmp
+LDFLAGS = -lm -fopenmp
 
 # Target executable name
 TARGET = advection2D

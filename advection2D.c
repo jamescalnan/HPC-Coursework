@@ -20,6 +20,20 @@ Notes: The time step is calculated using the CFL condition
 
 #include <stdio.h>
 #include <math.h>
+#include <omp.h>
+#include <time.h>
+
+/*********************************************************************
+                     Define constants
+**********************************************************************/
+
+#define BUFFER_SIZE 1024
+
+/*********************************************************************
+                     Function prototypes
+**********************************************************************/
+
+int compareFiles(const char* currentFilePath, const char* referenceFilePath);
 
 /*********************************************************************
                       Main function
@@ -87,43 +101,68 @@ int main(){
 
   /*** Place x points in the middle of the cell ***/
   /* LOOP 1 */
+  // Since there are no dependencies between the iterations of this loop, it can be parallelised
+  #pragma omp parallel for
   for (int i=0; i<NX+2; i++){
     x[i] = ( (float) i - 0.5) * dx;
   }
 
   /*** Place y points in the middle of the cell ***/
   /* LOOP 2 */
+  // Since there are no dependencies between the iterations of this loop, it can be parallelised
+  #pragma omp parallel for
   for (int j=0; j<NY+2; j++){
     y[j] = ( (float) j - 0.5) * dy;
   }
 
   /*** Set up Gaussian initial conditions ***/
   /* LOOP 3 */
-  for (int i=0; i<NX+2; i++){
-    for (int j=0; j<NY+2; j++){
-      x2      = (x[i]-x0) * (x[i]-x0);
-      y2      = (y[j]-y0) * (y[j]-y0);
-      u[i][j] = exp( -1.0 * ( (x2/(2.0*sigmax2)) + (y2/(2.0*sigmay2)) ) );
-    }
+  // Each computation of u[i][j] is independent of the others, so this loop can be parallelised
+  #pragma omp parallel for collapse(2)
+  for (int i = 0; i < NX + 2; i++) {
+      for (int j = 0; j < NY + 2; j++) {
+          float x2 = (x[i] - x0) * (x[i] - x0);
+          float y2 = (y[j] - y0) * (y[j] - y0);
+          u[i][j] = exp(-1.0 * ((x2 / (2.0 * sigmax2)) + (y2 / (2.0 * sigmay2))));
+      }
   }
+  // This is eq 6
 
   /*** Write array of initial u values out to file ***/
   FILE *initialfile;
   initialfile = fopen("initial.dat", "w");
   /* LOOP 4 */
+  // Because of how file streams work, this loop cannot be parallelised as it would jumble the output order
   for (int i=0; i<NX+2; i++){
     for (int j=0; j<NY+2; j++){
       fprintf(initialfile, "%g %g %g\n", x[i], y[j], u[i][j]);
     }
   }
   fclose(initialfile);
+
+
+  // Compare the initial file with the reference file
+  const char* currentFile = "initial.dat";
+  const char* referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/initial.dat";
+
+  if(compareFiles(currentFile, referenceFile) == 0) {
+      printf("Initial files are identical.\n");
+  } else {
+      printf("Initial files are different.\n");
+  }
+  // End of comparison
+
+
   
   /*** Update solution by looping over time steps ***/
   /* LOOP 5 */
+  // This isn't parallelisable becasue each iteration can depend on the previous one and parallelising it could cause a race condition
   for (int m=0; m<nsteps; m++){
     
     /*** Apply boundary conditions at u[0][:] and u[NX+1][:] ***/
     /* LOOP 6 */
+    // This loop can be parallelised as each iteration is independent of the others
+    #pragma omp parallel for
     for (int j=0; j<NY+2; j++){
       u[0][j]    = bval_left;
       u[NX+1][j] = bval_right;
@@ -131,6 +170,8 @@ int main(){
 
     /*** Apply boundary conditions at u[:][0] and u[:][NY+1] ***/
     /* LOOP 7 */
+    // This loop can be parallelised as each iteration is independent of the others
+    #pragma omp parallel for
     for (int i=0; i<NX+2; i++){
       u[i][0]    = bval_lower;
       u[i][NY+1] = bval_upper;
@@ -139,19 +180,27 @@ int main(){
     /*** Calculate rate of change of u using leftward difference ***/
     /* Loop over points in the domain but not boundary values */
     /* LOOP 8 */
+    // This loop can be parallelised as each iteration is independent of the others
+    // The calculation for each cell only depends on its immediate neighbors, 
+    // which are not being modified in this loop. Thus, iterations can be executed in 
+    // parallel without causing data races.
+    #pragma omp parallel for collapse(2)
     for (int i=1; i<NX+1; i++){
       for (int j=1; j<NY+1; j++){
-	dudt[i][j] = -velx * (u[i][j] - u[i-1][j]) / dx
-	            - vely * (u[i][j] - u[i][j-1]) / dy;
+        dudt[i][j] = -velx * (u[i][j] - u[i-1][j]) / dx
+                    - vely * (u[i][j] - u[i][j-1]) / dy;
       }
     }
     
     /*** Update u from t to t+dt ***/
     /* Loop over points in the domain but not boundary values */
     /* LOOP 9 */
+    // This loop can be parallelised as the update of u[i][j] is based on already calculated 
+    // values of dudt[i][j] and does not modify the dudt array itself.
+    #pragma omp parallel for collapse(2)
     for	(int i=1; i<NX+1; i++){
       for (int j=1; j<NY+1; j++){
-	u[i][j] = u[i][j] + dudt[i][j] * dt;
+        u[i][j] = u[i][j] + dudt[i][j] * dt;
       }
     }
     
@@ -168,7 +217,79 @@ int main(){
   }
   fclose(finalfile);
 
+  // Compare the final file with the reference file
+  currentFile = "final.dat";
+  referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/final.dat";
+
+  if(compareFiles(currentFile, referenceFile) == 0) {
+      printf("Final files are identical.\n");
+  } else {
+      printf("Final files are different.\n");
+  }
+  // End of comparison
+
+
   return 0;
 }
+
+
+/*********************************************************************
+                     Function definitions
+**********************************************************************/
+
+// Function to compare two files
+int compareFiles(const char* currentFilePath, const char* referenceFilePath) {
+    FILE *file1, *file2;
+    char buffer1[BUFFER_SIZE], buffer2[BUFFER_SIZE];
+
+    // Open the current file
+    file1 = fopen(currentFilePath, "r");
+    if (!file1) {
+        perror("Failed to open current file");
+        return -1; // Return -1 on error
+    }
+
+    // Open the reference file
+    file2 = fopen(referenceFilePath, "r");
+    if (!file2) {
+        perror("Failed to open reference file");
+        fclose(file1); // Make sure to close the first file before returning
+        return -1; // Return -1 on error
+    }
+
+    // Compare the files line by line
+    while (fgets(buffer1, BUFFER_SIZE, file1) && fgets(buffer2, BUFFER_SIZE, file2)) {
+        if (strcmp(buffer1, buffer2) != 0) {
+            // If any line doesn't match, close both files and return 1
+            fclose(file1);
+            fclose(file2);
+
+            // Output the line that didn't match
+            printf("Line in current file: %s", buffer1);
+            printf("Line in reference file: %s", buffer2);
+
+
+            return 1; // Files are different
+        }
+    }
+
+    // // Check if both files reached the end
+    // if (!feof(file1) || !feof(file2)) {
+    //     // If one file ended before the other, they are different
+    //     fclose(file1);
+    //     fclose(file2);
+    //     // Output the line that didn't match
+    //     printf("Line in current file: %s", buffer1);
+    //     printf("Line in reference file: %s", buffer2);
+    //     return 1; // Files are different
+    // }
+
+    // Close the files
+    fclose(file1);
+    fclose(file2);
+
+    return 0; // Files are identical
+}
+
 
 /* End of file ******************************************************/
