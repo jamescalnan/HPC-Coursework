@@ -41,21 +41,22 @@ int compareFiles(const char* currentFilePath, const char* referenceFilePath);
 
 int main(){
 
-  /* Grid properties */
+  /* Modified Grid properties to cover the range 0 ≤ x ≤ 30.0 m and 0 ≤ y ≤ 30.0 m */
   const int NX=1000;    // Number of x points
   const int NY=1000;    // Number of y points
   const float xmin=0.0; // Minimum x value
-  const float xmax=1.0; // Maximum x value
+  const float xmax=30.0; // Maximum x value, changed from 1.0 to 30.0
   const float ymin=0.0; // Minimum y value
-  const float ymax=1.0; // Maximum y value
+  const float ymax=30.0; // Maximum y value, changed from 1.0 to 30.0
   
-  /* Parameters for the Gaussian initial conditions */
-  const float x0=0.1;                    // Centre(x)
-  const float y0=0.1;                    // Centre(y)
-  const float sigmax=0.03;               // Width(x)
-  const float sigmay=0.03;               // Width(y)
+  /* Modified Parameters for the Gaussian initial conditions to represent a cloud */
+  const float x0=3.0;                    // Centre(x), changed to 3.0 m
+  const float y0=15.0;                   // Centre(y), changed to 15.0 m (vertically centered)
+  const float sigmax=1.0;                // Width(x), changed to 1.0 m
+  const float sigmay=5.0;                // Width(y), changed to 5.0 m (larger vertical extent)
   const float sigmax2 = sigmax * sigmax; // Width(x) squared
   const float sigmay2 = sigmay * sigmay; // Width(y) squared
+
 
   /* Boundary conditions */
   const float bval_left=0.0;    // Left boudnary value
@@ -65,11 +66,12 @@ int main(){
   
   /* Time stepping parameters */
   const float CFL=0.9;   // CFL number 
-  const int nsteps=1500; // Number of time steps
+  const int nsteps=800; // Number of time steps
 
-  /* Velocity */
-  const float velx=0.01; // Velocity in x direction
-  const float vely=0.01; // Velocity in y direction
+  /* Modified velocities for horizontal advection and no vertical movement */
+  const float velx=1.0; // Velocity in x direction, changed to 1.0 m/s
+  const float vely=0.0; // Velocity in y direction, changed to 0. (no vertical movement)
+
   
   /* Arrays to store variables. These have NX+2 elements
      to allow boundary values to be stored at both ends */
