@@ -21,6 +21,7 @@ Notes: The time step is calculated using the CFL condition
 #include <stdio.h>
 #include <math.h>
 #include <omp.h>
+#include <string.h>
 #include <time.h>
 
 /*********************************************************************
@@ -72,22 +73,21 @@ int main(){
   const float velx=1.0; // Velocity in x direction, changed to 1.0 m/s
   const float vely=0.0; // Velocity in y direction, changed to 0. (no vertical movement)
 
-  const double z_0 = 1.0; // Roughness length
+  const double z_0 = 1.0;     // Roughness length
   const double u_star = 0.12; // Friction velocity
-  const double kappa = 0.41; // Von Karman constant
+  const double kappa = 0.41;  // Von Karman constant
 
-  
   /* Arrays to store variables. These have NX+2 elements
      to allow boundary values to be stored at both ends */
   float x[NX+2];          // x-axis values
   float y[NX+2];          // y-axis values
   float u[NX+2][NY+2];    // Array of u values
   float dudt[NX+2][NY+2]; // Rate of change of u
-  float u_avg[NX+2]; // Array to store the vertically averaged values of u
+  float u_avg[NX+2];      // Array to store the vertically averaged values of u
 
 
-  float x2;   // x squared (used to calculate iniital conditions)
-  float y2;   // y squared (used to calculate iniital conditions)
+  // float x2;   // x squared (used to calculate iniital conditions)
+  // float y2;   // y squared (used to calculate iniital conditions)
   
   /* Calculate distance between points */
   float dx = (xmax-xmin) / ( (float) NX);
@@ -196,19 +196,21 @@ int main(){
     #pragma omp parallel for collapse(2)
     for (int i = 1; i < NX + 1; i++) {
       for (int j = 1; j < NY + 1; j++) {
-          double z = y[j];
-          // Calculate c_velx only if z > z_0 to avoid division by zero
-          double c_velx = 0.0;
-          if (z > z_0) {
-              c_velx = u_star * (log(y[j] / z_0) / kappa);
-          }
+        float z = y[j];
 
-          // Use a conditional expression to avoid division by zero
-          dudt[i][j] = -(c_velx ? c_velx * (u[i][j] - u[i - 1][j]) / dx : 0.0)
-                - vely * (u[i][j] - u[i][j - 1]) / dy;
+        float horizontal_velocity;
+        if (z > z_0) {
+          horizontal_velocity = (u_star / kappa) * log(z / z_0); // eq 1
+        } else if (z <= z_0) {
+          horizontal_velocity = 0.0;
+        }
+
+        dudt[i][j] =  - horizontal_velocity * (u[i][j] - u[i - 1][j]) / dx
+                      - vely * (u[i][j] - u[i][j - 1]) / dy;
       }
     }
     
+
     /*** Update u from t to t+dt ***/
     /* Loop over points in the domain but not boundary values */
     /* LOOP 9 */
@@ -308,17 +310,6 @@ int compareFiles(const char* currentFilePath, const char* referenceFilePath) {
             return 1; // Files are different
         }
     }
-
-    // // Check if both files reached the end
-    // if (!feof(file1) || !feof(file2)) {
-    //     // If one file ended before the other, they are different
-    //     fclose(file1);
-    //     fclose(file2);
-    //     // Output the line that didn't match
-    //     printf("Line in current file: %s", buffer1);
-    //     printf("Line in reference file: %s", buffer2);
-    //     return 1; // Files are different
-    // }
 
     // Close the files
     fclose(file1);
