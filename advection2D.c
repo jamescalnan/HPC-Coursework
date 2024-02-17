@@ -72,6 +72,10 @@ int main(){
   const float velx=1.0; // Velocity in x direction, changed to 1.0 m/s
   const float vely=0.0; // Velocity in y direction, changed to 0. (no vertical movement)
 
+  const double z_0 = 1.0; // Roughness length
+  const double u_star = 0.12; // Friction velocity
+  const double kappa = 0.41; // Von Karman constant
+
   
   /* Arrays to store variables. These have NX+2 elements
      to allow boundary values to be stored at both ends */
@@ -79,6 +83,8 @@ int main(){
   float y[NX+2];          // y-axis values
   float u[NX+2][NY+2];    // Array of u values
   float dudt[NX+2][NY+2]; // Rate of change of u
+  float u_avg[NX+2]; // Array to store the vertically averaged values of u
+
 
   float x2;   // x squared (used to calculate iniital conditions)
   float y2;   // y squared (used to calculate iniital conditions)
@@ -144,14 +150,14 @@ int main(){
 
 
   // Compare the initial file with the reference file
-  const char* currentFile = "initial.dat";
-  const char* referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/initial.dat";
+  // const char* currentFile = "initial.dat";
+  // const char* referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/initial.dat";
 
-  if(compareFiles(currentFile, referenceFile) == 0) {
-      printf("Initial files are identical.\n");
-  } else {
-      printf("Initial files are different.\n");
-  }
+  // if(compareFiles(currentFile, referenceFile) == 0) {
+  //     printf("Initial files are identical.\n");
+  // } else {
+  //     printf("Initial files are different.\n");
+  // }
   // End of comparison
 
 
@@ -179,6 +185,7 @@ int main(){
       u[i][NY+1] = bval_upper;
     }
     
+
     /*** Calculate rate of change of u using leftward difference ***/
     /* Loop over points in the domain but not boundary values */
     /* LOOP 8 */
@@ -186,9 +193,6 @@ int main(){
     // The calculation for each cell only depends on its immediate neighbors, 
     // which are not being modified in this loop. Thus, iterations can be executed in 
     // parallel without causing data races.
-    const double z_0 = 1.0; // Roughness length
-    const double u_star = 0.2; // Friction velocity
-    const double kappa = 0.41; // Von Karman constant
     #pragma omp parallel for collapse(2)
     for (int i = 1; i < NX + 1; i++) {
       for (int j = 1; j < NY + 1; j++) {
@@ -216,9 +220,26 @@ int main(){
         u[i][j] = u[i][j] + dudt[i][j] * dt;
       }
     }
+
+    for (int i = 1; i <= NX; i++) {
+        float sum = 0.0;
+        for (int j = 1; j <= NY; j++) {
+            sum += u[i][j];
+        }
+        u_avg[i] = sum / NY; // Averaging over all y values
+    }
     
   } // time loop
   
+
+  // Output the vertically averaged distribution to a file
+  FILE *avgfile;
+  avgfile = fopen("averaged.dat", "w");
+  for (int i = 1; i <= NX; i++) {
+      fprintf(avgfile, "%g %g\n", x[i], u_avg[i]);
+  }
+  fclose(avgfile);
+
   /*** Write array of final u values out to file ***/
   FILE *finalfile;
   finalfile = fopen("final.dat", "w");
@@ -231,14 +252,14 @@ int main(){
   fclose(finalfile);
 
   // Compare the final file with the reference file
-  currentFile = "final.dat";
-  referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/final.dat";
+  // currentFile = "final.dat";
+  // referenceFile = "/home/links/jdc235/HPC-Coursework/demo_answers/final.dat";
 
-  if(compareFiles(currentFile, referenceFile) == 0) {
-      printf("Final files are identical.\n");
-  } else {
-      printf("Final files are different.\n");
-  }
+  // if(compareFiles(currentFile, referenceFile) == 0) {
+  //     printf("Final files are identical.\n");
+  // } else {
+  //     printf("Final files are different.\n");
+  // }
   // End of comparison
 
 

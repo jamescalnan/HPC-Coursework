@@ -1,0 +1,19 @@
+# Set output to a PNG file
+set terminal png enhanced
+# Name of the output file
+set output "averaged.png"
+
+# Set graph title and labels
+set title "Vertically Averaged Distribution of u(x)"
+set xlabel "x"
+set ylabel "Average u(x)"
+
+# Set ranges for x and y axes if needed
+# set xrange [0:30.0]
+# Automatically adjust yrange
+set autoscale y
+
+# Plot the averaged data as a line graph
+plot "averaged.dat" using 1:2 with lines title "Avg u(x) vs. x"
+
+# End of script

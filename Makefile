@@ -20,7 +20,7 @@ $(TARGET): $(OBJ)
 
 # To remove compiled files
 clean:
-	rm -f $(TARGET) $(OBJ) initial.dat final.dat
+	rm -f $(TARGET) $(OBJ) initial.dat final.dat averaged.dat
 
 # Dependencies
 $(OBJ): $(SRC)
