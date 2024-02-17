@@ -221,6 +221,8 @@ int main(){
       }
     }
 
+
+    // Calculate the vertically averaged distribution
     for (int i = 1; i <= NX; i++) {
         float sum = 0.0;
         for (int j = 1; j <= NY; j++) {
