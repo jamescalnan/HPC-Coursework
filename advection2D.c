@@ -187,7 +187,7 @@ int main(){
     // which are not being modified in this loop. Thus, iterations can be executed in 
     // parallel without causing data races.
     const double z_0 = 1.0; // Roughness length
-    const double u_star = 0.12; // Friction velocity
+    const double u_star = 0.2; // Friction velocity
     const double kappa = 0.41; // Von Karman constant
     #pragma omp parallel for collapse(2)
     for (int i = 1; i < NX + 1; i++) {
