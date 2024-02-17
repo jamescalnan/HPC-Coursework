@@ -186,11 +186,22 @@ int main(){
     // The calculation for each cell only depends on its immediate neighbors, 
     // which are not being modified in this loop. Thus, iterations can be executed in 
     // parallel without causing data races.
+    const double z_0 = 1.0; // Roughness length
+    const double u_star = 0.12; // Friction velocity
+    const double kappa = 0.41; // Von Karman constant
     #pragma omp parallel for collapse(2)
-    for (int i=1; i<NX+1; i++){
-      for (int j=1; j<NY+1; j++){
-        dudt[i][j] = -velx * (u[i][j] - u[i-1][j]) / dx
-                    - vely * (u[i][j] - u[i][j-1]) / dy;
+    for (int i = 1; i < NX + 1; i++) {
+      for (int j = 1; j < NY + 1; j++) {
+          double z = y[j];
+          // Calculate c_velx only if z > z_0 to avoid division by zero
+          double c_velx = 0.0;
+          if (z > z_0) {
+              c_velx = u_star * (log(y[j] / z_0) / kappa);
+          }
+
+          // Use a conditional expression to avoid division by zero
+          dudt[i][j] = -(c_velx ? c_velx * (u[i][j] - u[i - 1][j]) / dx : 0.0)
+                - vely * (u[i][j] - u[i][j - 1]) / dy;
       }
     }
     
