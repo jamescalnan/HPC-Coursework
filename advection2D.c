@@ -134,7 +134,6 @@ int main(){
           u[i][j] = exp(-1.0 * ((x2 / (2.0 * sigmax2)) + (y2 / (2.0 * sigmay2))));
       }
   }
-  // This is eq 6
 
   /*** Write array of initial u values out to file ***/
   FILE *initialfile;
@@ -229,7 +228,7 @@ int main(){
       }
     }
 
-    // Calculate the vertically averaged distribution
+    // Calculate the vertically averaged distribution, task 2.4 (doesnt need to be parallelised)
     for (int i = 1; i <= NX; i++) {
         float sum = 0.0;
         for (int j = 1; j <= NY; j++) {
