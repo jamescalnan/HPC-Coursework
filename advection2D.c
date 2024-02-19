@@ -74,7 +74,7 @@ int main(){
   const float vely=0.0; // Velocity in y direction, changed to 0. (no vertical movement)
 
   const double z_0 = 1.0;     // Roughness length
-  const double u_star = 0.12; // Friction velocity
+  const double u_star = 0.2; // Friction velocity
   const double kappa = 0.41;  // Von Karman constant
 
   /* Arrays to store variables. These have NX+2 elements
@@ -161,12 +161,13 @@ int main(){
   // End of comparison
 
 
-  
-  /*** Update solution by looping over time steps ***/
+  // Store the max velocity from the result on eq 1 to be used to calculate the time step
+  float max_velx = 0.0;
+
+
   /* LOOP 5 */
   // This isn't parallelisable becasue each iteration can depend on the previous one and parallelising it could cause a race condition
   for (int m=0; m<nsteps; m++){
-    
     /*** Apply boundary conditions at u[0][:] and u[NX+1][:] ***/
     /* LOOP 6 */
     // This loop can be parallelised as each iteration is independent of the others
@@ -185,7 +186,6 @@ int main(){
       u[i][NY+1] = bval_upper;
     }
     
-
     /*** Calculate rate of change of u using leftward difference ***/
     /* Loop over points in the domain but not boundary values */
     /* LOOP 8 */
@@ -197,19 +197,25 @@ int main(){
     for (int i = 1; i < NX + 1; i++) {
       for (int j = 1; j < NY + 1; j++) {
         float z = y[j];
-
+        // ln(0) = error 
         float horizontal_velocity;
         if (z > z_0) {
+          // Chekc if z / z_0 is 0 and if so set horizontal_velocity to 0
           horizontal_velocity = (u_star / kappa) * log(z / z_0); // eq 1
+          
         } else if (z <= z_0) {
           horizontal_velocity = 0.0;
         }
 
         dudt[i][j] =  - horizontal_velocity * (u[i][j] - u[i - 1][j]) / dx
                       - vely * (u[i][j] - u[i][j - 1]) / dy;
+        max_velx = fmax(max_velx, fabs(horizontal_velocity));
       }
     }
-    
+
+
+    // Recalculate the time step using the CFL condition with the correct maximum velocity
+    dt = CFL / ((fabs(max_velx) / dx) + (fabs(vely) / dy));
 
     /*** Update u from t to t+dt ***/
     /* Loop over points in the domain but not boundary values */
@@ -222,7 +228,6 @@ int main(){
         u[i][j] = u[i][j] + dudt[i][j] * dt;
       }
     }
-
 
     // Calculate the vertically averaged distribution
     for (int i = 1; i <= NX; i++) {
@@ -250,6 +255,7 @@ int main(){
   /* LOOP 10 */
   for (int i=0; i<NX+2; i++){
     for (int j=0; j<NY+2; j++){
+
       fprintf(finalfile, "%g %g %g\n", x[i], y[j], u[i][j]);
     }
   }

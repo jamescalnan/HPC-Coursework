@@ -4,6 +4,8 @@
 # dat files
 *.dat
 
+.nfs00000000e9bd0c060000067d
+
 
 # Object files
 *.o
