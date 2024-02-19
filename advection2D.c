@@ -59,6 +59,7 @@ int main(){
   const float sigmay2 = sigmay * sigmay; // Width(y) squared
 
 
+
   /* Boundary conditions */
   const float bval_left=0.0;    // Left boudnary value
   const float bval_right=0.0;   // Right boundary value
