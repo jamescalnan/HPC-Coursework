@@ -9,7 +9,6 @@ set xlabel "x"
 set ylabel "Average u(x)"
 
 # Set ranges for x and y axes if needed
-# set xrange [0:30.0]
 # Automatically adjust yrange
 set autoscale y
 
